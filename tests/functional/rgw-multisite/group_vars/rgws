@@ -5,9 +5,10 @@ rgw_multisite: true
 rgw_zone: jupiter
 rgw_zonemaster: true
 rgw_zonesecondary: false
-rgw_multisite_proto: http
 rgw_zonegroup: solarsystem
-rgw_zone_user: zone.user
+rgw_zonegroupmaster: True 
+rgw_realm_system_user: zone.user
+rgw_realm_system_user_display_name: "Zone User"
 rgw_realm: milkyway
 system_access_key: 6kWkikvapSnHyE22P7nO
 system_secret_key: MGecsMrWtKZgngOHZdrd6d3JxGO5CPWgT2lcnpSt
