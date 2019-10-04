@@ -28,3 +28,29 @@
   with_items: "{{ groups.get(rgw_group_name, []) }}"
   run_once: true
   when: "'No such file or directory' in hostvars[item]['zonecheck'].stderr"
+
+- name: create a list of dicts with each rgw endpoint and it's zone
+  set_fact:
+    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) + [{ 'endpoint': 'http://' + hostvars[item]['_radosgw_address'] + ':' + hostvars[item]['radosgw_frontend_port']|string, 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  
+- name: create string of all the endpoints in the same rgw_zone
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string | default('') + item.endpoint + ',' }}"
+  with_items: "{{ zone_endpoint_pairs }}"
+  when: item.rgw_zone == rgw_zone
+
+- name: remove ',' after last endpoint in a endpoints string
+  set_fact:
+    zone_endpoints_string: "{{ zone_endpoints_string[:-1] }}"
+  when: 
+    - endpoints_string is defined
+    - endpoints_string[-1] == ','
+
+- name: create a list of zones and all their endpoints
+  set_fact:
+    zone_endpoints_list: "{{ zone_endpoints_list | default([]) + [{ 'endpoints': hostvars[item]['zone_endpoints_string'], 'zone': hostvars[item]['rgw_zone'], 'zonegroup': hostvars[item]['rgw_zonegroup'], 'realm': hostvars[item]['rgw_realm'], 'is_master': hostvars[item]['rgw_zonemaster'] }] | unique }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when: hostvars[item]['zone_endpoints_string'] is defined

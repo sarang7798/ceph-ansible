@@ -31,11 +31,20 @@
     - zones is defined
     - zones|length > 1 and not item.is_master | bool
   
+- name: add endpoints to their zone(s)
+  command: "{{ container_exec_cmd }} radosgw-admin zone modify --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
+  with_items: "{{ zone_endpoints_list }}"
+  delegate_to: "{{ groups[mon_group_name][0] }}"
+  run_once: true
+  when: 
+    - zone_endpoints_list is defined
+    - not item.is_master | bool
+
 - name: update period for zone creation
   command: "{{ container_exec_cmd }} radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
-  with_items: "{{ zones }}"
+  with_items: "{{ zone_endpoints_list }}"
   when: 
-    - zones is defined
+    - zone_endpoints_list is defined
     - not item.is_master | bool
