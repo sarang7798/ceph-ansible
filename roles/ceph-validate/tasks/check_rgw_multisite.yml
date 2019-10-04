@@ -13,18 +13,23 @@
   fail:
     msg: "rgw_zonemaster and rgw_zonesecondary cannot both be true"
   when:
-    - rgw_zonemaster
-    - rgw_zonesecondary
+    - rgw_zonemaster|bool
+    - rgw_zonesecondary|bool
 
 - name: fail if rgw_zonegroup is not set
   fail:
     msg: "rgw_zonegroup has not been set by the user"
   when: rgw_zonegroup is undefined
 
-- name: fail if rgw_zone_user is not set
+- name: fail if rgw_realm_system_user is not set
   fail:
     msg: "rgw_zone_user has not been set by the user"
-  when: rgw_zone_user is undefined
+  when: rgw_realm_system_user is undefined
+
+- name: fail if rgw_zone_user is not set
+  fail:
+    msg: "rgw_realm_system_user_display_name has not been set by the user"
+  when: rgw_realm_system_user_display_name is undefined
 
 - name: fail if rgw_realm is not set
   fail:
@@ -45,19 +50,39 @@
   fail:
     msg: "rgw_pull_port has not been set by the user"
   when:
-    - rgw_zonesecondary
+    - rgw_zonesecondary|bool
     - rgw_pull_port is undefined
 
 - name: fail if rgw_pull_proto is not set
   fail:
     msg: "rgw_pull_proto has not been set by the user"
   when:
-    - rgw_zonesecondary
+    - rgw_zonesecondary|bool
     - rgw_pull_proto is undefined
 
 - name: fail if rgw_pullhost is not set
   fail:
     msg: "rgw_pullhost has not been set by the user"
   when:
-    - rgw_zonesecondary
+    - rgw_zonesecondary|bool
     - rgw_pullhost is undefined
+
+- name: set_fact master_zonegroups
+  set_fact:
+    master_zonegroups: "{{ master_zonegroups | default([]) + [{ 'realm': hostvars[item]['rgw_realm'], 'zonegroup': hostvars[item]['rgw_zonegroup'] }] }}"
+  with_items: "{{ groups.get(rgw_group_name, []) }}"
+  run_once: true
+  when: 
+    - hostvars[item]['rgw_zonegroupmaster'] | bool
+
+- name: create a list of unique items of master_zonegroups
+  set_fact:
+    unique_master_zonegroups: "{{ master_zonegroups | unique }}"
+  run_once: true
+  when: master_zonegroups is defined
+
+- name: fail if master_zonegroups is not the same size as unique_master_zonegroups
+  fail:
+    msg: "more than one zonegroup has been declared as the master zonegroup of a particular realm"
+  when:
+    - master_zonegroups|length != unique_master_zonegroups|length
