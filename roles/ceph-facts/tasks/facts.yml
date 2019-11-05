@@ -282,6 +282,11 @@
       ntp_service_name: ntpd
     when: ansible_os_family in ['RedHat', 'Suse']
 
+- name: set_fact rgw_instances
+  set_fact:
+    rgw_instances: "{{ rgw_instances|default([]) | union([{ 'instance_name': inventory_hostname, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port, 'rgw_realm': rgw_realm, 'rgw_zonegroup': rgw_zonegroup, 'rgw_zone': rgw_zone }]) }}"
+  when: inventory_hostname in groups.get(rgw_group_name, [])
+
 - name: set chrony daemon name RedHat and Ubuntu based OSs
   block:
     - name: set chronyd daemon name for RedHat based OSs

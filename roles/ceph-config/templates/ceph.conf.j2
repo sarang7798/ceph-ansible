@@ -215,6 +215,11 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
 rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type == 'civetweb' else 'endpoint' }}=[{{ hostvars[host][interface][ip_version][0]['address'] }}]:{{ radosgw_frontend_port }} {{ radosgw_frontend_options }}
     {% endif %}
 {% endif %}
+{% if rgw_multisite|bool %}
+rgw_realm = {{ instance['rgw_realm'] }}
+rgw_zonegroup = {{ instance['rgw_zonegroup'] }}
+rgw_zone = {{ instance['rgw_zone'] }}
+{% endif %}
 {% endfor %}
 {% endif %}
 

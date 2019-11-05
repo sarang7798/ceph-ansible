@@ -10,21 +10,20 @@ class TestRGWs(object):
             result = host.package("ceph-radosgw").is_installed
         assert result
 
-    def test_rgw_service_is_running(self, node, host):
-        service_name = "ceph-radosgw@rgw.{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
+    def test_rgw_service_enabled_and_running(self, node, host):
+        service_name = "ceph-radosgw@rgw.{hostname}.{instance_name}".format(
+            hostname=node["vars"]["inventory_hostname"],
+            hostname=node["vars"]["instance_name"]
         )
-        assert host.service(service_name).is_running
+        s = host.service(service_name)
+        assert s.is_enabled
+        assert s.is_running
 
-    def test_rgw_service_is_enabled(self, node, host):
-        service_name = "ceph-radosgw@rgw.{hostname}".format(
-            hostname=node["vars"]["inventory_hostname"]
-        )
-        assert host.service(service_name).is_enabled
-
-    def test_rgw_is_up(self, node, host):
-        hostname=node["vars"]["inventory_hostname"]
-        cluster=node["cluster_name"]
+    def test_rgw_is_up(self, node, host, setup):
+        hostname = node["vars"]["ansible_hostname"]
+        inventory_hostname = node["vars"]["inventory_hostname"]
+        cluster = setup["cluster_name"]
+        container_binary = setup["container_binary"]
         if node['docker']:
             docker_exec_cmd = 'docker exec ceph-rgw-{hostname}'.format(hostname=hostname)
         else:
@@ -35,11 +34,19 @@ class TestRGWs(object):
             cluster=cluster
         )
         output = host.check_output(cmd)
-        daemons = [i for i in json.loads(output)["servicemap"]["services"]["rgw"]["daemons"]]
-        assert hostname in daemons
+        daemons = [i for i in json.loads(
+            output)["servicemap"]["services"]["rgw"]["daemons"]]
+        instance_name = "{hostname}.{inventory_hostname}".format(
+            hostname=hostname,
+            inventory_hostname=inventory_hostname
+        )
+        assert instance_name in daemons
 
     @pytest.mark.no_docker
-    def test_rgw_http_endpoint(self, node, host):
-        # rgw frontends ip_addr is configured on eth1
-        ip_addr = host.interface("eth1").addresses[0]
-        assert host.socket("tcp://{ip_addr}:{port}".format(ip_addr=ip_addr, port=8080)).is_listening
+    def test_rgw_http_endpoint(self, node, host, setup):
+        # rgw frontends ip_addr is configured on public_interface
+        ip_addr = host.interface(setup['public_interface']).addresses[0]
+        assert host.socket(
+            "tcp://{ip_addr}:{port}".format(ip_addr=ip_addr,
+                                                port=(8080))
+        ).is_listening  # noqa E501

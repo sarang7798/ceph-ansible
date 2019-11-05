@@ -2,60 +2,49 @@
 
 RETRIES="{{ handler_health_rgw_check_retries }}"
 DELAY="{{ handler_health_rgw_check_delay }}"
-RGW_NAME="{{ ansible_hostname }}"
-RGW_PORT="{{ radosgw_frontend_port }}"
+HOST_NAME="{{ ansible_hostname }}"
+INSTANCE_NAME="{{ inventory_hostname }}"
+RGW_BASE_PORT={{ radosgw_frontend_port }}
+RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
+if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
+    RGW_PROTOCOL=https
+else
+    RGW_PROTOCOL=http
+fi
+declare -a DOCKER_EXEC
+DOCKER_EXEC=""
 {% if containerized_deployment | bool %}
-DOCKER_EXEC="docker exec ceph-rgw-{{ ansible_hostname }}"
-{% endif %}
-# Backward compatibility
-SOCKET="EMPTY_SOCKET"
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_fqdn }}.asok
-$DOCKER_EXEC test -S /var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok && SOCKET=/var/run/ceph/{{ cluster }}-client.rgw.{{ ansible_hostname }}.asok
-{% if hostvars[inventory_hostname]['radosgw_address_block'] is defined and hostvars[inventory_hostname]['radosgw_address_block'] != 'subnet' %}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | last }}] \
-    {% endif %}
-{% elif radosgw_address_block is defined and radosgw_address_block != 'subnet' -%}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | first }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ hostvars[inventory_hostname]['ansible_all_' + ip_version + '_addresses'] | ipaddr(radosgw_address_block) | last }}] \
-    {% endif %}
-{% elif hostvars[inventory_hostname]['radosgw_address'] is defined and hostvars[inventory_hostname]['radosgw_address'] != 'address' -%}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ hostvars[inventory_hostname]['radosgw_address'] }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ hostvars[inventory_hostname]['radosgw_address'] }}] \
-    {% endif %}
-{% elif radosgw_address is defined and radosgw_address != 'x.x.x.x' -%}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ radosgw_address }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ radosgw_address }}] \
-    {% endif %}
-{% elif hostvars[inventory_hostname]['radosgw_interface'] is defined -%}
-    {% set interface = 'ansible_' + (hostvars[inventory_hostname]['radosgw_interface'] | replace('-', '_')) %}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
-    {% endif %}
-{% else %}
-    {% set interface = 'ansible_' + (radosgw_interface | replace('-', '_')) %}
-    {% if ip_version == 'ipv4' %}
-RGW_IP={{ hostvars[inventory_hostname][interface][ip_version]['address'] }} \
-    {% elif ip_version == 'ipv6' %}
-RGW_IP=[{{ hostvars[inventory_hostname][interface][ip_version][0]['address'] }}] \
-    {% endif %}
+  CONTAINER_NAME="ceph-rgw-${HOST_NAME}-${INSTANCE_NAME}"
+  DOCKER_EXEC="{{ container_binary }} exec ${CONTAINER_NAME}"
 {% endif %}
 
+RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
+SOCKET_PREFIX="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.${INSTANCE_NAME}"
+
+check_socket() {
+  local succ=0
+  local count=10
+  # Wait and ensure the socket exists after restarting the daemon
+  while [ $count -ne 0 ]; do
+    SOCKET=$(grep ${SOCKET_PREFIX} /proc/net/unix | awk '{ print $8 }')
+    if [ -n "${SOCKET}" ]; then
+      ${DOCKER_EXEC} test -S ${SOCKET} && succ=$((succ+1)) && break
+    fi
+    sleep $DELAY
+    let count=count-1
+  done
+  if [ $succ -ne 1 ]; then
+    echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
+    journalctl -u ceph-radosgw@rgw.${HOST_NAME}.${INSTANCE_NAME}
+    exit 1
+  fi
+}
+
 check_for_curl_or_wget() {
-  if $DOCKER_EXEC command -v wget &>/dev/null; then
-    rgw_test_command="wget --tries 1 --quiet -O /dev/null"
-  elif $DOCKER_EXEC command -v curl &>/dev/null; then
-    rgw_test_command="curl --fail --silent --output /dev/null"
+  if ${DOCKER_EXEC} command -v wget &>/dev/null; then
+    rgw_test_command="wget --no-check-certificate --tries 10 --quiet -O /dev/null"
+  elif ${DOCKER_EXEC} command -v curl &>/dev/null; then
+    rgw_test_command="curl -k --fail --silent --retry 10 --output /dev/null"
   else
     echo "It seems that neither curl or wget are available on your system."
     echo "Cannot test rgw connection."
@@ -65,26 +54,22 @@ check_for_curl_or_wget() {
 
 check_rest() {
   check_for_curl_or_wget
+  local succ=0
   while [ $RETRIES -ne 0 ]; do
-    $DOCKER_EXEC $rgw_test_command http://$RGW_IP:$RGW_PORT && exit 0
+    ${DOCKER_EXEC} $rgw_test_command $RGW_PROTOCOL://$RGW_IP:$RGW_BASE_PORT && succ=$((succ+1)) && break
     sleep $DELAY
     let RETRIES=RETRIES-1
   done
-  # If we reach this point, it means there is a problem with the connection to rgw
-  echo "Error connecting locally to Rados Gateway service: http://$RGW_IP:$RGW_PORT"
-  exit 1
+  if [ $succ -ne 1 ]; then
+    # If we reach this point, it means there is a problem with the connection to rgw
+    echo "Error connecting locally to Rados Gateway service: $RGW_PROTOCOL://$RGW_IP:$RGW_BASE_PORT"
+    exit 1
+  fi
 }
 
 # First, restart the daemon
-systemctl restart ceph-radosgw@rgw.${RGW_NAME}
-
-COUNT=10
-# Wait and ensure the socket exists after restarting the daemon
-while [ $COUNT -ne 0 ]; do
-  $DOCKER_EXEC test -S $SOCKET && check_rest
-  sleep $DELAY
-  let COUNT=COUNT-1
-done
-echo "Socket file ${SOCKET} could not be found, which means Rados Gateway is not running. Showing ceph-rgw unit logs now:"
-journalctl -u ceph-radosgw@rgw.${RGW_NAME}
-exit 1
+systemctl restart ceph-radosgw@rgw.${HOST_NAME}.${INSTANCE_NAME}
+# Check socket files
+check_socket
+# Check rest
+check_rest
