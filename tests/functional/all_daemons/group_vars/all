@@ -7,7 +7,8 @@ radosgw_interface: eth1
 ceph_conf_overrides:
   global:
     osd_pool_default_size: 1
-openstack_config: True
+openstack_config: False
+dashboard_enabled: False
 openstack_glance_pool:
   name: "images"
   pg_num: "{{ osd_pool_default_pg_num }}"
