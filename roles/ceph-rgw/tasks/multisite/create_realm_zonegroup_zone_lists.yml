@@ -31,7 +31,7 @@
 
 - name: create a list of dicts with each rgw endpoint and it's zone
   set_fact:
-    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) + [{ 'endpoint': 'http://' + hostvars[item]['_radosgw_address'] + ':' + hostvars[item]['radosgw_frontend_port']|string, 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
+    zone_endpoint_pairs: "{{ zone_endpoint_pairs | default([]) + [{ 'endpoint': 'http://' + hostvars[item]['radosgw_address'] + ':' + hostvars[item]['radosgw_frontend_port']|string, 'rgw_zone': hostvars[item]['rgw_zone'] }] }}"
   with_items: "{{ groups.get(rgw_group_name, []) }}"
   run_once: true
   

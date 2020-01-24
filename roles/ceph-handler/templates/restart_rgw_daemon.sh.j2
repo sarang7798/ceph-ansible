@@ -5,7 +5,6 @@ DELAY="{{ handler_health_rgw_check_delay }}"
 HOST_NAME="{{ ansible_hostname }}"
 INSTANCE_NAME="{{ inventory_hostname }}"
 RGW_BASE_PORT={{ radosgw_frontend_port }}
-RGW_FRONTEND_SSL_CERT={{ radosgw_frontend_ssl_certificate }}
 if [ -n "$RGW_FRONTEND_SSL_CERT" ]; then
     RGW_PROTOCOL=https
 else
@@ -18,7 +17,7 @@ DOCKER_EXEC=""
   DOCKER_EXEC="{{ container_binary }} exec ${CONTAINER_NAME}"
 {% endif %}
 
-RGW_IP={{ hostvars[inventory_hostname]['_radosgw_address'] }}
+RGW_IP={{ hostvars[inventory_hostname]['radosgw_address'] }}
 SOCKET_PREFIX="/var/run/ceph/{{ cluster }}-client.rgw.${HOST_NAME}.${INSTANCE_NAME}"
 
 check_socket() {

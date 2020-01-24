@@ -1,20 +1,20 @@
 ---
 - name: fetch the realm(s)
-  command: "{{ container_exec_cmd }} radosgw-admin realm pull --cluster={{ cluster }} --rgw-realm={{ item.realm }} --url={{ item.endpoint }} --access-key={{ item.access_key }} --secret={{ item.secret_key }}"
+  command: "radosgw-admin realm pull --cluster={{ cluster }} --rgw-realm={{ item.realm }} --url={{ item.endpoint }} --access-key={{ item.access_key }} --secret={{ item.secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   with_items: "{{ secondary_realms }}"
   when: secondary_realms is defined
 
 - name: get the period(s)
-  command: "{{ container_exec_cmd }} radosgw-admin period get --cluster={{ cluster }} --rgw-realm={{ item.realm }}"
+  command: "radosgw-admin period get --cluster={{ cluster }} --rgw-realm={{ item.realm }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   with_items: "{{ secondary_realms }}"
   when: secondary_realms is defined
 
 - name: create the default zone
-  command: "{{ container_exec_cmd }} radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }} --default"
+  command: "radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }} --default"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   with_items: "{{ zones }}"
@@ -23,7 +23,7 @@
     - zones|length == 1 and not item.is_master | bool
 
 - name: create the non-master non-default zone(s)
-  command: "{{ container_exec_cmd }} radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }}"
+  command: "radosgw-admin zone create --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --access-key={{ item.access_key }} --secret={{ item.secret_key }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   with_items: "{{ zones }}"
@@ -32,7 +32,7 @@
     - zones|length > 1 and not item.is_master | bool
   
 - name: add endpoints to their zone(s)
-  command: "{{ container_exec_cmd }} radosgw-admin zone modify --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
+  command: "radosgw-admin zone modify --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} --endpoints {{ item.endpoints }}"
   with_items: "{{ zone_endpoints_list }}"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
@@ -41,7 +41,7 @@
     - not item.is_master | bool
 
 - name: update period for zone creation
-  command: "{{ container_exec_cmd }} radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
+  command: "radosgw-admin --cluster={{ cluster }} --rgw-realm={{ item.realm }} --rgw-zonegroup={{ item.zonegroup }} --rgw-zone={{ item.zone }} period update --commit"
   delegate_to: "{{ groups[mon_group_name][0] }}"
   run_once: true
   with_items: "{{ zone_endpoints_list }}"

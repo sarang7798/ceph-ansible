@@ -182,18 +182,18 @@
   when:
     - rgw_group_name in group_names
 
-- name: restart ceph rgw daemon(s) - non container
-  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
-  listen: "restart ceph rgws"
-  when:
-    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
-    - rgw_group_name in group_names
-    - not containerized_deployment
-    - hostvars[item]['_rgw_handler_called'] | default(False)
-    - rgw_socket_stat.rc == 0
-  with_items: "{{ groups[rgw_group_name] }}"
-  delegate_to: "{{ item }}"
-  run_once: True
+#- name: restart ceph rgw daemon(s) - non container
+#  command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh
+#  listen: "restart ceph rgws"
+#  when:
+#    # We do not want to run these checks on initial deployment (`socket.rc == 0`)
+#    - rgw_group_name in group_names
+#    - not containerized_deployment
+#    - hostvars[item]['_rgw_handler_called'] | default(False)
+#    - rgw_socket_stat.rc == 0
+#  with_items: "{{ groups[rgw_group_name] }}"
+#  delegate_to: "{{ item }}"
+#  run_once: True
 
 - name: restart ceph rgw daemon(s) - container
   command: /usr/bin/env bash /tmp/restart_rgw_daemon.sh

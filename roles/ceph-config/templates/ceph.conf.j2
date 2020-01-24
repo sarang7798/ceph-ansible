@@ -169,7 +169,7 @@ osd memory target = {{ _osd_memory_target | default(osd_memory_target) }}
 {% for host in groups[rgw_group_name] %}
 {% set _rgw_hostname = hostvars[host]['rgw_hostname'] | default(hostvars[host]['ansible_hostname']) %}
 {# {{ hostvars[host]['rgw_hostname'] }} for backward compatibility, fqdn issues. See bz1580408 #}
-[client.rgw.{{ _rgw_hostname }}]
+[client.rgw.{{ _rgw_hostname + '.' + hostvars[host]['inventory_hostname'] }}]
 host = {{ _rgw_hostname }}
 keyring = /var/lib/ceph/radosgw/{{ cluster }}-rgw.{{ _rgw_hostname }}/keyring
 log file = /var/log/ceph/{{ cluster }}-rgw-{{ hostvars[host]['ansible_hostname'] }}.log
@@ -216,9 +216,9 @@ rgw frontends = {{ radosgw_frontend_type }} {{ 'port' if radosgw_frontend_type =
     {% endif %}
 {% endif %}
 {% if rgw_multisite|bool %}
-rgw_realm = {{ instance['rgw_realm'] }}
-rgw_zonegroup = {{ instance['rgw_zonegroup'] }}
-rgw_zone = {{ instance['rgw_zone'] }}
+rgw_realm = {{ hostvars[host]['rgw_realm'] }}
+rgw_zonegroup = {{ hostvars[host]['rgw_zonegroup'] }}
+rgw_zone = {{ hostvars[host]['rgw_zone']}}
 {% endif %}
 {% endfor %}
 {% endif %}
