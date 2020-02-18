@@ -4,29 +4,14 @@ mon1
 mon2
 
 [mgrs]
-mgr0
+mon0
 
 [osds]
-osd0 osd_crush_location="{ 'root': 'HDD', 'rack': 'mon-rackkkk', 'pod': 'monpod', 'host': 'osd0' }"
-osd1 osd_crush_location="{ 'root': 'default', 'host': 'osd1' }"
-
-[mdss]
-mds0
-mds1
-mds2
-
-[rgws]
-rgw0
-
-[nfss]
-nfs0
-
-[clients]
-client0
-client1
-
-[rbdmirrors]
-rbd-mirror0
-
-[iscsigws]
-iscsi-gw0
+osd0 dedicated_devices="['/dev/sdc','/dev/sdc']" devices="['/dev/sda','/dev/sdb']" osd_scenario="non-collocated" osd_objectstore="bluestore"
+osd1 devices="['/dev/sda','/dev/sdb', '/dev/sdc']" osd_scenario="collocated" osd_objectstore="bluestore"
+osd2 dedicated_devices="['/dev/sdc','/dev/sdc']" devices="['/dev/sda','/dev/sdb']" osd_scenario="non-collocated" osd_objectstore="filestore"
+osd3 devices="['/dev/sda','/dev/sdb', '/dev/sdc']" osd_scenario="collocated" osd_objectstore="filestore"
+osd4 dedicated_devices="['/dev/sdc','/dev/sdc']" devices="['/dev/sda','/dev/sdb']" osd_scenario="non-collocated" osd_objectstore="bluestore" dmcrypt=true
+osd5 devices="['/dev/sda','/dev/sdb', '/dev/sdc']" osd_scenario="collocated" osd_objectstore="bluestore" dmcrypt=true
+osd6 dedicated_devices="['/dev/sdc','/dev/sdc']" devices="['/dev/sda','/dev/sdb']" osd_scenario="non-collocated" osd_objectstore="filestore" dmcrypt=true
+osd7 devices="['/dev/sda','/dev/sdb', '/dev/sdc']" osd_scenario="collocated" osd_objectstore="filestore" dmcrypt=true
